@@ -1,4 +1,6 @@
 #include "matrix.h"
+#include<iostream>
+#include <iomanip>
 using std::endl;
 using std::cout;
 using std::istream;
@@ -38,7 +40,7 @@ Matrix::Matrix(int rows, int cols, double value)
 // 拷贝构造函数
 Matrix::Matrix(const Matrix& m)
 {
- 
+	initialize();
 	for (int i = 0; i < rows_num; i++) {
 		for (int j = 0; j < cols_num; j++) {
 			p[i][j] = m.p[i][j];
@@ -48,12 +50,12 @@ Matrix::Matrix(const Matrix& m)
 
 
 // 二维数组初始化
-Matrix::Matrix(const double *m)
+Matrix::Matrix(const double m[][LEN])
 {
- 
+	initialize();
 	for (int i = 0; i < rows_num; i++) {
 		for (int j = 0; j < cols_num; j++) {
-			p[i][j] = *(m + i * LEN + j);
+			p[i][j] = m[i][j];
 		}
 	}
 }
@@ -81,7 +83,7 @@ Matrix& Matrix::operator=(const Matrix& m)
 	}
 	return *this;
 }
-// 实现二维数组向矩阵赋值
+// 实现二维数组向矩阵赋值 事实上没必要，因为当二维数组作为右值时隐式构造出了矩阵类赋给左边的矩阵
 Matrix& Matrix::operator=(double *a){
 	for(int i=0;i<rows_num;i++){
 		for(int j=0;j<cols_num;j++){
@@ -113,7 +115,7 @@ Matrix& Matrix::operator-=(const Matrix& m)
 //实现*=
 Matrix& Matrix::operator*=(const Matrix& m)
 {
-	Matrix temp = Matrix();
+	Matrix temp(rows_num,m.cols_num,0.0);
 	for (int i = 0; i < temp.rows_num; i++) {
 		for (int j = 0; j < temp.cols_num; j++) {
 			for (int k = 0; k < cols_num; k++) {
@@ -168,7 +170,7 @@ Matrix Matrix::operator^(const int n)const{
 	Matrix ba_M(LEN, LEN, 0.0);
     ba_M = *this;
 	for(int i = 0; i < n - 1; i++){
-		ba_M *= *this;
+		ba_M *= (*this);
 	}
 	return ba_M;
 }
@@ -191,34 +193,35 @@ double Matrix::Point(int i, int j) const{
 	return this->p[i][j];
 }
 //求矩阵的逆矩阵
-Matrix Matrix::inv(Matrix A){
-	if(A.rows_num!=A.cols_num){
+Matrix Matrix::inverse(){
+
+	if(rows_num!=cols_num){
 		std::cout<<"只有方阵能求逆矩阵"<<std::endl;
 		std::abort();//只有方阵能求逆矩阵
 	}
 	double temp;
 	Matrix A_B=Matrix();
-	A_B=A;//为矩阵A做一个备份
+	A_B=*this;//为矩阵A做一个备份
 	Matrix B= Matrix();
 	//将小于EPS的数全部置0
-	for (int i = 0; i < A.rows_num; i++) {
-		for (int j = 0; j < A.cols_num; j++) {
-			if (abs(A.p[i][j]) <= EPS) {
-				A.p[i][j] = 0;
+	for (int i = 0; i < rows_num; i++) {
+		for (int j = 0; j < cols_num; j++) {
+			if (abs(p[i][j]) <= EPS) {
+				p[i][j] = 0;
 			}
 		}
 	}
 	//选择需要互换的两行选主元
-	for(int i=0;i<A.rows_num;i++){
-		if(abs(A.p[i][i])<=EPS){
+	for(int i=0;i<rows_num;i++){
+		if(abs(p[i][i])<=EPS){
 			bool flag=false;
-			for(int j=0;(j<A.rows_num)&&(!flag);j++){
-				if((abs(A.p[i][j])>EPS)&&(abs(A.p[j][i])>EPS)){
+			for(int j=0;(j<rows_num)&&(!flag);j++){
+				if((abs(p[i][j])>EPS)&&(abs(p[j][i])>EPS)){
 					flag=true;
-					for(int k=0;k<A.cols_num;k++){
-						temp=A.p[i][k];
-						A.p[i][k]=A.p[j][k];
-						A.p[j][k]=temp;
+					for(int k=0;k<cols_num;k++){
+						temp=p[i][k];
+						p[i][k]=p[j][k];
+						p[j][k]=temp;
 						temp=B.p[i][k];
 						B.p[i][k]=B.p[j][k];
 						B.p[j][k]=temp;
@@ -233,55 +236,56 @@ Matrix Matrix::inv(Matrix A){
 	}
 	//通过初等行变换将A变为上三角矩阵
 	double temp_rate;
-	for(int i=0;i<A.rows_num;i++){
-		for(int j=i+1;j<A.rows_num;j++){
-			temp_rate=A.p[j][i]/A.p[i][i];
-			for(int k=0;k<A.cols_num;k++){
-				A.p[j][k]-=A.p[i][k]*temp_rate;
+	for(int i=0;i<rows_num;i++){
+		for(int j=i+1;j<rows_num;j++){
+			temp_rate=p[j][i]/p[i][i];
+			for(int k=0;k<cols_num;k++){
+				p[j][k]-=p[i][k]*temp_rate;
 				B.p[j][k]-=B.p[i][k]*temp_rate;
 			}
-			A.p[j][i]=0;
+			p[j][i]=0;
 		}
 	}
 	//使对角元素均为1
-	for(int i=0;i<A.rows_num;i++){
-		temp=A.p[i][i];
-		for(int j=0;j<A.cols_num;j++){
-			A.p[i][j]/=temp;
+	for(int i=0;i<rows_num;i++){
+		temp=p[i][i];
+		for(int j=0;j<cols_num;j++){
+			p[i][j]/=temp;
 			B.p[i][j]/=temp;
 		}
 	}
 	//std::cout<<"算法可靠性检测，若可靠，输出上三角矩阵"<<std::endl;
 	//将已经变为上三角矩阵的A，变为单位矩阵
-	for(int i=A.rows_num-1;i>=1;i--){
+	for(int i=rows_num-1;i>=1;i--){
 		for(int j=i-1;j>=0;j--){
-			temp=A.p[j][i];
-			for(int k=0;k<A.cols_num;k++){
-				A.p[j][k]-=A.p[i][k]*temp;
+			temp=p[j][i];
+			for(int k=0;k<cols_num;k++){
+				p[j][k]-=p[i][k]*temp;
 				B.p[j][k]-=B.p[i][k]*temp;
 			}
 		}
 	}
-	std::cout<<"算法可靠性检测，若可靠，输出单位矩阵"<<std::endl;
-	for(int i=0;i<A.rows_num;i++){
-		for(int j=0;j<A.cols_num;j++){
-			printf("%7.4lf\t\t",A.p[i][j]);
-		}
-		cout << endl;
-	}
-	A=A_B;//还原A
+
+	// std::cout<<"算法可靠性检测，若可靠，输出单位矩阵"<<std::endl;
+	// for(int i=0;i<rows_num;i++){
+	// 	for(int j=0;j<cols_num;j++){
+	// 		printf("%7.4lf\t\t",p[i][j]);
+	// 	}
+	// 	cout << endl;
+	// }
+
+	*this=A_B;//还原A
 	return B;//返回该矩阵的逆矩阵
 }
 
 
 //实现矩阵的转置
-Matrix Matrix::T(const Matrix & m)
-{	int col_size=m.cols_num;
-	int row_size=m.rows_num;
+Matrix Matrix::transpose()
+{	
 	Matrix mt = Matrix();
-	for (int i = 0; i <row_size; i++) {
-		for (int j = 0; j <col_size; j++) {
-			mt.p[j][i] = m.p[i][j];
+	for (int i = 0; i <rows_num; i++) {
+		for (int j = 0; j <cols_num; j++) {
+			mt.p[j][i] = p[i][j];
 		}
 	}
 	return mt;
@@ -301,10 +305,12 @@ istream& operator>>(istream& is, Matrix& m)
 //实现矩阵的输出
 ostream& operator<<(ostream& os, Matrix& m)
 {
+	os << '\n';
 	for (int i = 0; i < m.rows_num; i++) {
 		for (int j = 0; j < m.cols_num; j++) {
-			os << m.p[i][j];
+			os << std::setw(4) << std::setfill(' ') << m.p[i][j] << " ";
 		}
+		os << "\n";
 	}
 	return os;
 }
