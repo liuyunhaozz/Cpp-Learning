@@ -16,7 +16,7 @@ class Student {
     public:
         void read();
         void print();
-        friend bool mycomp(const Student&, const Student &t2);
+        friend bool mycomp(const Student &, const Student &);
 };
 
 void Student::read() {
